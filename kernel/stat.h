@@ -13,10 +13,11 @@ struct stat {
 };
 
  struct pstat {
-  int inuse[NPROC];     // Whether this slot of the process table is in use (1 or 0)
-  int pid[NPROC];       // PID of each process
-  int ppid[NPROC];      // Parent PID of each process
-  int sz[NPROC];
-  char name[NPROC][16]; // Process name
-  int priority[NPROC];  // Priority of each process
+  int inuse[NPROC];      // Whether this slot of the process table is in use (1 or 0)
+  int pid[NPROC];        // PID of each process
+  int ppid[NPROC];       // Parent PID of each process
+  int sz[NPROC];         // Process size
+  char state[NPROC][10]; // Process state
+  char name[NPROC][16];  // Process name
+  int priority[NPROC];   // Priority of each process
 };

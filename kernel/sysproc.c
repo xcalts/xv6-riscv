@@ -104,7 +104,11 @@ sys_setpriority(void) {
 
  
 uint64 sys_getpinfo(void) {
-  getpinfo();
+  struct pstat *pinfo;
+
+  argaddr(0, (uint64*)&pinfo);
+  
+  getpinfo(pinfo);
 
   return 0;
 }

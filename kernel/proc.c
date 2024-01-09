@@ -724,7 +724,7 @@ setpriority(int priority, int pid)
 }
 
 void 
-getpinfo() {
+getpinfo(struct pstat *pinfo) {
   static char *states[] = {
       [UNUSED] "unused",
       [SLEEPING] "sleep",
@@ -734,16 +734,18 @@ getpinfo() {
   struct proc *p;
   char *state;
   int ppid, pid;
-  int i = 0;
 
   printf("\n");
 
+  struct pstat process_stats;
+  int idx = -1;
   for (p = proc; p < &proc[NPROC]; p++)
   {
+    idx++;
+    
     acquire(&p->lock);
     if (p->state == UNUSED)
     {
-      i++;
       release(&p->lock);
       continue;
     }
@@ -765,14 +767,15 @@ getpinfo() {
       ppid = -1;
     release(&wait_lock);
 
-    printf("cmd=%s, pid=%d, ppid=%d, state=%s, size=%d priority=%d", 
-      p->name,
-      pid, 
-      ppid, 
-      state, 
-      p->sz,
-      p->priority);
-    printf("\n");
-    i++;
+    process_stats.inuse[idx] = 1;
+    process_stats.pid[idx] = pid;
+    process_stats.ppid[idx] = ppid;
+    process_stats.sz[idx] = p->sz;
+    process_stats.priority[idx] = p->priority;
+    safestrcpy(process_stats.name[idx], p->name, sizeof(p->name));
+    safestrcpy(process_stats.state[idx], state, sizeof(state));
   }
+
+  // Copy from kernel space to user space
+  either_copyout(1, (uint64)pinfo, &process_stats, sizeof(process_stats));
 }
