@@ -1,5 +1,13 @@
 # Λειτουργικά Συστήματα (Κ22) - Εργασία 2η
 
+1. [Υλοποίηση νέων system calls: `setpriority` και `getpinfo`](#υλοποίηση-νέων-system-calls-setpriority-και-getpinfo)
+
+2. [Υλοποίηση προγράμματος χρήστη `ps`](#υλοποίηση-προγράμματος-χρήστη-ps)
+
+3. [Υλοποίηση priority based scheduler](#υλοποίηση-priority-based-scheduler)
+
+4. [usertests](#usertests)
+
 ## Υλοποίηση νέων system calls: `setpriority` και `getpinfo`
 
 1. Πρόσθεσα το `struct stat` στις δηλώσεις που αφορούν στατιστικά στον kernel space. 
@@ -69,7 +77,7 @@ allocproc(void)
 +}
 ```
 
-Κάθε process πρέπει να έχει και ένα `priority`.
+5. Κάθε process πρέπει να έχει και ένα `priority`.
 
 ```diff
 #  kernel/proc.h
@@ -79,7 +87,7 @@ struct proc {
 };
 ```
 
-5. Πρόσθεσα αριθμούς για τα syscall που δημιουργώ.
+6. Πρόσθεσα αριθμούς για τα syscall που δημιουργώ.
 
 ```diff
 #  kernel/syscall.h
@@ -87,7 +95,7 @@ struct proc {
 + #define SYS_getpinfo     23
 ```
 
-6. Πρόσθεσα wrappers των syscalls για το user space.
+7. Πρόσθεσα wrappers των syscalls για το user space.
 
 ```diff
 #  kernel/sysproc.h
@@ -114,7 +122,7 @@ struct proc {
 +}
 ```
 
-7. Αντιστοίχησα wrappers με syscalls.
+8. Αντιστοίχησα wrappers με syscalls.
 
 ```diff
 #  kernel/syscall.c
@@ -126,7 +134,7 @@ static uint64 (*syscalls[])(void) = {
 };
 ```
 
-8. Πρόσθεσα τις δηλώσεις των syscalls για το user space.
+9. Πρόσθεσα τις δηλώσεις των syscalls για το user space.
 
 ```diff
 #  user/user.h
@@ -139,7 +147,7 @@ int fork(void);
 +int getpinfo(struct pstat *);
 ```
 
-9. Χρειάζεται και αυτό για να δημιουργηθούν τα syscalls
+10. Χρειάζεται και αυτό για να δημιουργηθούν τα syscalls
 
 ```diff
 #  user/usys.pl
@@ -234,35 +242,34 @@ scheduler(void)
 2. Πρόσθεσα ένα schedulertest user πρόγραμμα για να επιδείξω την λειτουργία του scheduler.
 
 ```diff
-# user/schedulertest
-#include "kernel/types.h"
-#include "kernel/stat.h"
-#include "user/user.h"
-#include "kernel/fcntl.h"
-
-
-#define NFORK 20
-#define IO 5
-
-int main() {
-  int n, pid;
-  for(n=0; n < NFORK;n++) {
-      pid = fork();
-      if (pid < 0)
-          break;
-      if (pid == 0) {
-            for (volatile int i = 0; i < 1000000000; i++) {} // CPU bound process 
-
-          printf("\n[+] Process:%d with Priority: %d finished", n, NFORK - n);
-          exit(0);
-      } else {
-        setpriority(NFORK - n, pid); // Will only matter for PBS, set lower priority for IO bound processes 
-      }
-  }
++# user/schedulertest
++#include "kernel/types.h"
++#include "kernel/stat.h"
++#include "user/user.h"
++#include "kernel/fcntl.h"
++
++
++#define NFORK 20
++#define IO 5
++
++int main() {
++  int n, pid;
++  for(n=0; n < NFORK;n++) {
++      pid = fork();
++      if (pid < 0)
++          break;
++      if (pid == 0) {
++            for (volatile int i = 0; i < 1000000000; i++) {} // CPU bound process 
++
++          printf("\n[+] Process:%d with Priority: %d finished", n, NFORK - n);
++          exit(0);
++      } else {
++        setpriority(NFORK - n, pid); // Will only matter for PBS, set lower priority for IO bound processes 
++      }
++  }
   
-  exit(0);
-}
-
++  exit(0);
++}
 ```
 
 3. Δεν ξέχασα την μαγεία στο Makefile
@@ -301,4 +308,8 @@ $ schedulertest
 [+] Process:18 with Priority: 2 finished
 [+] Process:19 with Priority: 1 finished
 ```
+
+## usertests
+
+Εκτέλεσα τα `usertests` και όλα εντάξει ✅
 
