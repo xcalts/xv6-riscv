@@ -149,3 +149,156 @@ entry("fork");
 +entry("getpinfo");
 ```
 
+## Υλοποίηση προγράμματος χρήστη `ps`
+
+1. Πρόσθεσα την λειτουργικότητα της `ps`.
+
+```diff
+#  user/ps.c
++#include "kernel/types.h"
++#include "kernel/stat.h"
++#include "user/user.h"
++
++int
++main(int argc, char *argv[])
++{
++  ...
++}
+```
+
+2. Για να γίνει compiled και επομένως διαθέσιμο στον user:
+
+```diff
+#  ./Makefile
++UPROGS=\
+	$U/_cat\
+ ...
++	$U/_ps\
+...
+```
+
+## Υλοποίηση priority based scheduler
+
+1. Άλλαξα την συνάρτητη scheduler για να δίνει προτεραιότητα με βάση το priority.
+
+> Απλά βρίσκω το μεγαλύτερο `priority`, δεν έκανα RR γιατί θα γινόταν πάρα πολύ περίπλοκο 😂.
+
+```diff
+# kernel/proc.c
+...
+void
+scheduler(void)
+{
+  struct proc *p;
+  struct cpu *c = mycpu();
+  
+  c->proc = 0;
+  for(;;){
+    // Avoid deadlock by ensuring that devices can interrupt.
+    intr_on();
++
++   struct proc* process = 0;
++    int hp = -1;
++    for (p = proc; p < &proc[NPROC]; p++)
++    {
++      acquire(&p->lock);
++
++      if (p->state == RUNNABLE)
++      {
++        if(!process || hp < p->priority)
++        {
++          if (process)
++            release(&process->lock);
++
++          process = p;
++          hp = p->priority;
++          continue;
++        }
++      }
++      release(&p->lock);
++    }
++
++    if (process)
++    {
++      process->state = RUNNING;
++      c->proc = process;
++      swtch(&c->context, &process->context);
++      c->proc = 0;
++      release(&process->lock);
++    }
+  }
+}
+...
+```
+
+2. Πρόσθεσα ένα schedulertest user πρόγραμμα για να επιδείξω την λειτουργία του scheduler.
+
+```diff
+# user/schedulertest
+#include "kernel/types.h"
+#include "kernel/stat.h"
+#include "user/user.h"
+#include "kernel/fcntl.h"
+
+
+#define NFORK 20
+#define IO 5
+
+int main() {
+  int n, pid;
+  for(n=0; n < NFORK;n++) {
+      pid = fork();
+      if (pid < 0)
+          break;
+      if (pid == 0) {
+            for (volatile int i = 0; i < 1000000000; i++) {} // CPU bound process 
+
+          printf("\n[+] Process:%d with Priority: %d finished", n, NFORK - n);
+          exit(0);
+      } else {
+        setpriority(NFORK - n, pid); // Will only matter for PBS, set lower priority for IO bound processes 
+      }
+  }
+  
+  exit(0);
+}
+
+```
+
+3. Δεν ξέχασα την μαγεία στο Makefile
+
+```diff
+#  ./Makefile
++UPROGS=\
+	$U/_cat\
+ ...
++	$U/_schedulertest\
+...
+
+4. Αν τρέξει κανείς το πρόγραμμα εκτυπώνει κάτι τέτοιο:
+
+```sh
+$ schedulertest
+
+[+] Process:0 wi
+[t+] Ph Prirocoessr:ity1:  2wit0 hf iniPsrheidority: 19 finished
+[+] Process:2 with Priority: 18 finished
+[+] Process:5 with Priority: 15 finished
+[+] Process:4 with Priority: 16 finished
+[+] Process:3 with Priority: 17 finished
+[+] Process:6 with Priority: 14 finished
+[+] Process:8 with Priority: 12 finished$ 
+[+] Process:7 with Priority: 13 finished
+[+] Process:9 with Priority: 11 finished
+[+] Process:10 with Priority: 10 finished
+[+] Process:11 with Priority: 9 finished
+[+] Process:12 with Priority: 8 finished
+[+] Process:13 with Priority: 7 finished
+[+] Process:14 with Priority: 6 finished
+[+] Process:16 with Priority: 4 finished
+[+] Process:15 with Priority: 5 finished
+[+] Process:17 with Priority: 3 finished
+[+] Process:18 with Priority: 2 finished
+[+] Process:19 with Priority: 1 finished
+```
+
