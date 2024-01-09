@@ -126,7 +126,7 @@ found:
   p->pid = allocpid();
   p->state = USED;
   p->priority = DEFAULTPRIORITY; // [+] Initialize priority
-
+  
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
     freeproc(p);
@@ -454,21 +454,34 @@ scheduler(void)
     // Avoid deadlock by ensuring that devices can interrupt.
     intr_on();
 
-    for(p = proc; p < &proc[NPROC]; p++) {
+    struct proc* process = 0;
+    int hp = -1;
+    for (p = proc; p < &proc[NPROC]; p++)
+    {
       acquire(&p->lock);
-      if(p->state == RUNNABLE) {
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
-        p->state = RUNNING;
-        c->proc = p;
-        swtch(&c->context, &p->context);
 
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
+      if (p->state == RUNNABLE)
+      {
+        if(!process || hp < p->priority)
+        {
+          if (process)
+            release(&process->lock);
+
+          process = p;
+          hp = p->priority;
+          continue;
+        }
       }
       release(&p->lock);
+    }
+
+    if (process)
+    {
+      process->state = RUNNING;
+      c->proc = process;
+      swtch(&c->context, &process->context);
+      c->proc = 0;
+      release(&process->lock);
     }
   }
 }
