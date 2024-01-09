@@ -5,6 +5,7 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "stat.h"
 
 uint64
 sys_exit(void)
@@ -88,4 +89,22 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+uint64
+sys_setpriority(void) {
+  int priority;
+  int pid;
+  
+  argint(0, &priority);
+  argint(1, &pid);
+
+  return setpriority(priority, pid);
+}
+
+ 
+uint64 sys_getpinfo(void) {
+  getpinfo();
+
+  return 0;
 }

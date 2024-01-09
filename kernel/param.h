@@ -11,3 +11,6 @@
 #define NBUF         (MAXOPBLOCKS*3)  // size of disk block cache
 #define FSSIZE       2000  // size of file system in blocks
 #define MAXPATH      128   // maximum file path name
+#define DEFAULTPRIORITY 10 // default priority value
+#define MAXPRIORITY 20     // max priority value
+#define MINPRIORITY 1      // min priority value

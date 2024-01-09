@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "stat.h"
 
 struct cpu cpus[NCPU];
 
@@ -124,6 +125,7 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
+  p->priority = DEFAULTPRIORITY; // [+] Initialize priority
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -679,5 +681,85 @@ procdump(void)
       state = "???";
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
+  }
+}
+
+// Sets the priority of the calling process.
+int 
+setpriority(int priority, int pid)
+{
+    struct proc *p;
+
+    for(p = proc; p < &proc[NPROC]; p++)
+    {
+      acquire(&p->lock);
+      
+      if(p->pid == pid)
+      {
+        int v = p->priority;
+        p->priority = priority;
+
+        release(&p->lock);
+
+        if (v > priority)
+            yield();
+        return v;
+      }
+      release(&p->lock);
+    }
+    return -1;
+}
+
+void 
+getpinfo() {
+  static char *states[] = {
+      [UNUSED] "unused",
+      [SLEEPING] "sleep",
+      [RUNNABLE] "runble",
+      [RUNNING] "run",
+      [ZOMBIE] "zombie"};
+  struct proc *p;
+  char *state;
+  int ppid, pid;
+  int i = 0;
+
+  printf("\n");
+
+  for (p = proc; p < &proc[NPROC]; p++)
+  {
+    acquire(&p->lock);
+    if (p->state == UNUSED)
+    {
+      i++;
+      release(&p->lock);
+      continue;
+    }
+    if (p->state >= 0 && p->state < NELEM(states) && states[p->state])
+      state = states[p->state];
+    else
+      state = "???";
+
+    pid = p->pid;
+    release(&p->lock);
+    acquire(&wait_lock);
+    if (p->parent)
+    {
+      acquire(&p->parent->lock);
+      ppid = p->parent->pid;
+      release(&p->parent->lock);
+    }
+    else
+      ppid = -1;
+    release(&wait_lock);
+
+    printf("cmd=%s, pid=%d, ppid=%d, state=%s, size=%d priority=%d", 
+      p->name,
+      pid, 
+      ppid, 
+      state, 
+      p->sz,
+      p->priority);
+    printf("\n");
+    i++;
   }
 }
